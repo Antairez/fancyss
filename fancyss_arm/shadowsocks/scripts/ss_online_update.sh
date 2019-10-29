@@ -238,7 +238,7 @@ get_remote_config(){
 	fi
 
 	[ -n "$group" ] && group_base64=`echo $group | base64_encode | sed 's/ -//g'`
-	[ -n "$server" ] && server_base64=`echo $server | base64_encode | sed 's/ -//g'`	
+	[ -n "$server" ] && server_base64=`echo $server':'$server_port | base64_encode | sed 's/ -//g'`	
 	#把全部服务器节点写入文件 /usr/share/shadowsocks/serverconfig/all_onlineservers
 	[ -n "$group" ] && [ -n "$server" ] && echo $server_base64 $group_base64 >> /tmp/all_onlineservers
 	#echo ------
@@ -278,13 +278,13 @@ update_config(){
 		local_password=$(dbus get ssconf_basic_password_$index)
 		#local_group=$(dbus get ssconf_basic_group_$index)
 		
-		#echo update $index
+		# echo update $index
 		local i=0
 		[ "$ssr_subscribe_obfspara" == "0" ] && dbus remove ssconf_basic_rss_obfs_param_$index
 		[ "$ssr_subscribe_obfspara" == "1" ] && dbus set ssconf_basic_rss_obfs_param_$index="$obfsparam"
 		[ "$ssr_subscribe_obfspara" == "2" ] && dbus set ssconf_basic_rss_obfs_param_$index="$ssr_subscribe_obfspara_val"
 		dbus set ssconf_basic_mode_$index="$ssr_subscribe_mode"
-		[ "$local_remarks" != "$remarks" ] && dbus set ssconf_basic_name_$index=$remarks
+		[ "$local_remarks" != "$remarks" ] && dbus set ssconf_basic_name_$index=$remarks && let i+=1
 		[ "$local_server_port" != "$server_port" ] && dbus set ssconf_basic_port_$index=$server_port && let i+=1
 		[ "$local_protocol" != "$protocol" ] && dbus set ssconf_basic_rss_protocol_$index=$protocol && let i+=1
 		[ "$local_protocol_param"x != "$protoparam"x ] && dbus set ssconf_basic_rss_protocol_param_$index=$protoparam && let i+=1
@@ -292,7 +292,7 @@ update_config(){
 		[ "$local_obfs" != "$obfs" ] && dbus set ssconf_basic_rss_obfs_$index=$obfs && let i+=1
 		[ "$local_password" != "$password" ] && dbus set ssconf_basic_password_$index=$password && let i+=1
 		if [ "$i" -gt "0" ];then
-			echo_date 修改SSR节点：【$remarks】 && let updatenum+=1
+			echo_date 修改SSR节点：【$remarks】&& let updatenum+=1
 		else
 			echo_date SSR节点：【$remarks】 参数未发生变化，跳过！
 		fi
@@ -778,7 +778,10 @@ start_update(){
 		for LOCAL_NODE in $LOCAL_NODES
 		do
 			# write: server group nu
-			echo `dbus get ssconf_basic_server_$LOCAL_NODE|base64_encode` `dbus get ssconf_basic_group_$LOCAL_NODE|base64_encode`| eval echo `sed 's/$/ $LOCAL_NODE/g'` >> /tmp/all_localservers
+			LOCAL_SERVER=`dbus get ssconf_basic_server_$LOCAL_NODE`
+			LOCAL_PORT=`dbus get ssconf_basic_port_$LOCAL_NODE`
+			LOCAL_SERVER_AND_PORT="$LOCAL_SERVER:$LOCAL_PORT"
+			echo `echo "$LOCAL_SERVER_AND_PORT"|base64_encode` `dbus get ssconf_basic_group_$LOCAL_NODE|base64_encode`| eval echo `sed 's/$/ $LOCAL_NODE/g'` >> /tmp/all_localservers
 		done
 	else
 		touch /tmp/all_localservers
